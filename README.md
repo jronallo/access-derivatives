@@ -1,4 +1,4 @@
-# Access::Derivatives
+# Access Derivatives
 
 Ruby scripts used at NCSU Libraries for creating access derivatives.
 

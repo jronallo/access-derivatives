@@ -1,0 +1,40 @@
+#!/usr/bin/env ruby
+
+# process_video /path/to/directory/of/video/files/
+
+directory = File.expand_path(ARGV[0])
+
+base_output_directory = ENV['PROCESS_VIDEO_OUTPUT_DIRECTORY'] || '/var/processing_output'
+
+batch_output_directory = File.basename(directory)
+
+output_directory =  File.join(base_output_directory, batch_output_directory)
+unless File.exist?(output_directory)
+  Dir.mkdir(output_directory)
+end
+
+source_video_files = []
+['*.mp4','*.flv', '*.mov', '*.avi', '*.mkv','*.m4v'].each do |source_extension|
+  source_video_files << Dir.glob(File.join(directory, source_extension))
+end
+source_video_files.flatten!.compact!
+
+source_video_files.each do |filepath|
+  # get the basename
+  extension = File.extname(filepath)
+  basename = File.basename(filepath, extension)
+
+  # determine the video output directory
+  video_output_directory     = File.join(output_directory, basename)
+  unless File.exist?(video_output_directory)
+    Dir.mkdir(video_output_directory)
+  end
+
+  video_output_filename_root = File.join(video_output_directory, basename)
+  video_output_filename_mp4  = video_output_filename_root + '.mp4'
+  video_output_filename_webm = video_output_filename_root + '.webm'
+
+  `ffmpeg -i #{filepath} -c:v libx264 -preset slow -crf 23 -profile:v baseline -level 3.0 -filter:v "scale=640:-1" -acodec libfdk_aac -b:a 128k -movflags +faststart "#{video_output_filename_mp4}"`
+
+  `ffmpeg -i "#{filepath}" -c:v libvpx -crf 10 -b:v 1M -filter:v "scale=640:-1" -c:a libvorbis -b:a 128k "#{video_output_filename_webm}"`
+end

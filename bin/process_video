@@ -6,7 +6,7 @@ require 'etc'
 
 directory = File.expand_path(ARGV[0])
 
-uid = File.stat(directory)
+uid = File.stat(directory).uid
 username_for_batch = Etc.getpwuid(uid).name
 
 base_output_directory = ENV['PROCESS_VIDEO_OUTPUT_DIRECTORY'] || '/var/processing_output'
@@ -16,6 +16,11 @@ batch_output_directory = File.basename(directory)
 output_directory =  File.join(base_output_directory, batch_output_directory)
 unless File.exist?(output_directory)
   Dir.mkdir(output_directory)
+end
+
+log_directory = File.join(output_directory, 'log')
+unless File.exist?(log_directory)
+  Dir.mkdir(log_directory)
 end
 
 source_video_files = []
@@ -39,10 +44,13 @@ source_video_files.each do |filepath|
   video_output_filename_mp4  = video_output_filename_root + '.mp4'
   video_output_filename_webm = video_output_filename_root + '.webm'
 
-  `ffmpeg -i #{filepath} -c:v libx264 -preset slow -crf 23 -profile:v baseline -level 3.0 -filter:v "scale=640:-1" -acodec libfdk_aac -b:a 128k -movflags +faststart "#{video_output_filename_mp4}"`
+  log_file_mp4 = File.join(log_directory, basename + '-ffmpeg-mp4-%t.log')
+  log_file_webm = File.join(log_directory, basename + '-ffmpeg-webm-%t.log')
 
-  `ffmpeg -i "#{filepath}" -c:v libvpx -crf 10 -b:v 1M -filter:v "scale=640:-1" -c:a libvorbis -b:a 128k "#{video_output_filename_webm}"`
+  `FFREPORT=file=#{log_file_mp4} ffmpeg -i #{filepath} -c:v libx264 -preset slow -crf 23 -profile:v baseline -level 3.0 -filter:v "scale=640:-1" -acodec libfdk_aac -b:a 128k -movflags +faststart "#{video_output_filename_mp4}"`
+
+  `FFREPORT=file=#{log_file_webm} ffmpeg -i "#{filepath}" -c:v libvpx -crf 10 -b:v 1M -filter:v "scale=640:-1" -c:a libvorbis -b:a 128k "#{video_output_filename_webm}"`
 end
 
-
+# This may only work this way with the -r option on redhat
 `echo "To get the files run: scp -r #{username_for_batch}@av1.lib.ncsu.edu:#{base_output_directory}/#{output_directory}/* ." | mail -s "Your transcoding job is done" -r jnronall@ncsu.edu  #{username_for_batch}@ncsu.edu`

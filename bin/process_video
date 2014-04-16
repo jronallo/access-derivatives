@@ -2,6 +2,7 @@
 
 # process_video /path/to/directory/of/video/files/
 
+# Requires a recent ffmpeg and mail.
 require 'etc'
 
 # batch directory for processing
@@ -68,6 +69,9 @@ source_video_files.each do |filepath|
   # Create images every 5 seconds from the MP4 output.
   `FFREPORT=file=#{log_file_snapshot} ffmpeg -i "#{video_output_filename_mp4}" -f image2 -vf fps=fps=1/5 #{video_snapshots_base_filename}-%05d.png`
 
+  # Create poster sprite and related webvtt file
+  poster_sprite_command_path = File.join(File.expand_path(File.dirname(__FILE__)), 'poster_sprite')
+  `#{poster_sprite_command_path} #{video_snapshots_directory}`
 end
 
 # Sends an email when the job is done. This may only work this way with the -r option on redhat.

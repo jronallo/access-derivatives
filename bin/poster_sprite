@@ -1,0 +1,61 @@
+#!/usr/bin/env ruby
+
+# poster_sprite /path/to/snapshots/name
+
+# Creates a poster sprite (and in the future maybe a WebVTT file) from snapshots in a directory.
+
+# requires montage from imagemagick
+
+directory = File.expand_path(ARGV[0])
+directory_glob = File.join(directory, '*png')
+directory_basename = File.basename(directory)
+sprite_basename = directory_basename + '-sprite.jpg'
+sprite_output_filename = File.join(directory, sprite_basename)
+webvtt_output_filename = File.join(directory, directory_basename + '-sprite.vtt')
+
+first_image = Dir.glob(directory_glob).sort.first
+original_dimensions = `identify -format "%[fx:w]x%[fx:h]" #{first_image}`.chomp
+
+original_width_str, original_height_str = original_dimensions.split('x')
+original_height = original_height_str.to_i
+original_width = original_width_str.to_i
+
+width = 150
+height = (original_height.to_f / original_width * width).to_i
+
+tile_per_row = 5
+
+`montage #{directory_glob} -tile #{tile_per_row}x -geometry #{width}x #{sprite_output_filename}`
+
+vtt_asset_base = File.join('http://siskel.lib.ncsu.edu/SCRC/', directory_basename, sprite_basename)
+
+File.open(webvtt_output_filename, 'w') do |fh|
+  fh.puts "WEBVTT\n\n"
+
+  # figure out the coordinates when the images are 5 across at 150px wide.
+  # What height are they then?
+  x = 0
+  y = 0
+  number_in_row = 1
+
+  Dir.glob(directory_glob).sort.each_with_index do |file, index|
+    full_url = vtt_asset_base + "#xywh=#{x},#{y},#{width},#{height}"
+
+    start_time_integer = index * 5 # 5 seconds between each
+    end_time_integer = start_time_integer + 5
+
+    start_time = start_time_integer.to_s + '.000'
+    end_time = end_time_integer.to_s + '.000'
+
+    fh.puts start_time + ' --> ' + end_time
+    fh.puts full_url + "\n\n"
+
+    number_in_row += 1
+    x += width
+    if number_in_row > tile_per_row
+      number_in_row = 1
+      x = 0
+      y += height
+    end
+  end
+end

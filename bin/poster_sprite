@@ -4,7 +4,7 @@
 
 # Creates a poster sprite (and in the future maybe a WebVTT file) from snapshots in a directory.
 
-# requires montage from imagemagick
+# requires montage and identify from imagemagick
 
 directory = File.expand_path(ARGV[0])
 directory_glob = File.join(directory, '*png')

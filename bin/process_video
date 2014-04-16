@@ -3,6 +3,7 @@
 # process_video /path/to/directory/of/video/files/
 
 # Requires a recent ffmpeg and mail.
+# requires montage and identify from imagemagick
 require 'etc'
 
 # batch directory for processing

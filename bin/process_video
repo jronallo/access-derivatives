@@ -4,13 +4,15 @@
 
 require 'etc'
 
+# batch directory for processing
 directory = File.expand_path(ARGV[0])
 
+# Get the username of the owner of the batch directory. Used later for sending email.
 uid = File.stat(directory).uid
 username_for_batch = Etc.getpwuid(uid).name
 
+# What directory should we place the output in?
 base_output_directory = ENV['PROCESS_VIDEO_OUTPUT_DIRECTORY'] || '/var/processing_output'
-
 batch_output_directory = File.basename(directory)
 
 output_directory =  File.join(base_output_directory, batch_output_directory)
@@ -18,17 +20,20 @@ unless File.exist?(output_directory)
   Dir.mkdir(output_directory)
 end
 
+# Create a directory for placing ffmpeg log files.
 log_directory = File.join(output_directory, 'log')
 unless File.exist?(log_directory)
   Dir.mkdir(log_directory)
 end
 
+# Get the list of all the files that ought to be processed
 source_video_files = []
 ['*.mp4','*.flv', '*.mov', '*.avi', '*.mkv','*.m4v'].each do |source_extension|
   source_video_files << Dir.glob(File.join(directory, source_extension))
 end
 source_video_files.flatten!.compact!
 
+# iterate over each of the files that ought to be processed
 source_video_files.each do |filepath|
   # get the basename
   extension = File.extname(filepath)
@@ -40,10 +45,12 @@ source_video_files.each do |filepath|
     Dir.mkdir(video_output_directory)
   end
 
+  # determine filenames for each output format
   video_output_filename_root = File.join(video_output_directory, basename)
   video_output_filename_mp4  = video_output_filename_root + '.mp4'
   video_output_filename_webm = video_output_filename_root + '.webm'
 
+  # determine the filenames for each of the log files created
   log_file_mp4 = File.join(log_directory, basename + '-ffmpeg-mp4-%t.log')
   log_file_webm = File.join(log_directory, basename + '-ffmpeg-webm-%t.log')
 
@@ -52,5 +59,5 @@ source_video_files.each do |filepath|
   `FFREPORT=file=#{log_file_webm} ffmpeg -i "#{filepath}" -c:v libvpx -crf 10 -b:v 1M -filter:v "scale=640:-1" -c:a libvorbis -b:a 128k "#{video_output_filename_webm}"`
 end
 
-# This may only work this way with the -r option on redhat
+# Sends an email when the job is done. This may only work this way with the -r option on redhat.
 `echo "To get the files run: scp -r #{username_for_batch}@av1.lib.ncsu.edu:#{base_output_directory}/#{output_directory}/* ." | mail -s "Your transcoding job is done" -r jnronall@ncsu.edu  #{username_for_batch}@ncsu.edu`

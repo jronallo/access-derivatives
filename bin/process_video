@@ -2,7 +2,12 @@
 
 # process_video /path/to/directory/of/video/files/
 
+require 'etc'
+
 directory = File.expand_path(ARGV[0])
+
+uid = File.stat(directory)
+username_for_batch = Etc.getpwuid(uid).name
 
 base_output_directory = ENV['PROCESS_VIDEO_OUTPUT_DIRECTORY'] || '/var/processing_output'
 
@@ -38,3 +43,6 @@ source_video_files.each do |filepath|
 
   `ffmpeg -i "#{filepath}" -c:v libvpx -crf 10 -b:v 1M -filter:v "scale=640:-1" -c:a libvorbis -b:a 128k "#{video_output_filename_webm}"`
 end
+
+
+`echo "To get the files run: scp -r #{username_for_batch}@av1.lib.ncsu.edu:#{base_output_directory}/#{output_directory}/* ." | mail -s "Your transcoding job is done" -r jnronall@ncsu.edu  #{username_for_batch}@ncsu.edu`

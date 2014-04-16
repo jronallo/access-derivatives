@@ -15,16 +15,17 @@ username_for_batch = Etc.getpwuid(uid).name
 base_output_directory = ENV['PROCESS_VIDEO_OUTPUT_DIRECTORY'] || '/var/processing_output'
 batch_output_directory = File.basename(directory)
 
+# Create output directory.
 output_directory =  File.join(base_output_directory, batch_output_directory)
-unless File.exist?(output_directory)
-  Dir.mkdir(output_directory)
-end
+Dir.mkdir(output_directory) unless File.exist?(output_directory)
 
 # Create a directory for placing ffmpeg log files.
 log_directory = File.join(output_directory, 'log')
-unless File.exist?(log_directory)
-  Dir.mkdir(log_directory)
-end
+Dir.mkdir(log_directory) unless File.exist?(log_directory)
+
+# Create directory for snapshots.
+snapshot_directory = File.join(output_directory, 'snapshots')
+Dir.mkdir(snapshot_directory) unless File.exist?(snapshot_directory)
 
 # Get the list of all the files that ought to be processed
 source_video_files = []
@@ -39,11 +40,14 @@ source_video_files.each do |filepath|
   extension = File.extname(filepath)
   basename = File.basename(filepath, extension)
 
-  # determine the video output directory
+  # Create the video output directory
   video_output_directory     = File.join(output_directory, basename)
-  unless File.exist?(video_output_directory)
-    Dir.mkdir(video_output_directory)
-  end
+  Dir.mkdir(video_output_directory) unless File.exist?(video_output_directory)
+
+  # Create the snaptshots directory.
+  video_snapshots_directory = File.join(snapshot_directory, basename)
+  Dir.mkdir(video_snapshots_directory) unless File.exist?(video_snapshots_directory)
+  video_snapshots_base_filename = File.join(video_snapshots_directory, basename)
 
   # determine filenames for each output format
   video_output_filename_root = File.join(video_output_directory, basename)
@@ -53,12 +57,17 @@ source_video_files.each do |filepath|
   # determine the filenames for each of the log files created
   log_file_mp4 = File.join(log_directory, basename + '-ffmpeg-mp4-%t.log')
   log_file_webm = File.join(log_directory, basename + '-ffmpeg-webm-%t.log')
+  log_file_snapshot = File.join(log_directory, basename + '-snapshot-%t.log')
 
   # Create MP4 suitable for web playback and log output.
   `FFREPORT=file=#{log_file_mp4} ffmpeg -i #{filepath} -c:v libx264 -preset slow -crf 23 -profile:v baseline -level 3.0 -filter:v "scale=640:-1" -acodec libfdk_aac -b:a 128k -movflags +faststart "#{video_output_filename_mp4}"`
 
   # Create WebM and log output.
   `FFREPORT=file=#{log_file_webm} ffmpeg -i "#{filepath}" -c:v libvpx -crf 10 -b:v 1M -filter:v "scale=640:-1" -c:a libvorbis -b:a 128k "#{video_output_filename_webm}"`
+
+  # Create images every 5 seconds from the MP4 output.
+  `FFREPORT=file=#{log_file_snapshot} ffmpeg -i "#{video_output_filename_mp4}" -f image2 -vf fps=fps=1/5 #{video_snapshots_base_filename}-%05d.png`
+
 end
 
 # Sends an email when the job is done. This may only work this way with the -r option on redhat.

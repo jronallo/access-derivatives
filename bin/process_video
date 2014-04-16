@@ -54,8 +54,10 @@ source_video_files.each do |filepath|
   log_file_mp4 = File.join(log_directory, basename + '-ffmpeg-mp4-%t.log')
   log_file_webm = File.join(log_directory, basename + '-ffmpeg-webm-%t.log')
 
+  # Create MP4 suitable for web playback and log output.
   `FFREPORT=file=#{log_file_mp4} ffmpeg -i #{filepath} -c:v libx264 -preset slow -crf 23 -profile:v baseline -level 3.0 -filter:v "scale=640:-1" -acodec libfdk_aac -b:a 128k -movflags +faststart "#{video_output_filename_mp4}"`
 
+  # Create WebM and log output.
   `FFREPORT=file=#{log_file_webm} ffmpeg -i "#{filepath}" -c:v libvpx -crf 10 -b:v 1M -filter:v "scale=640:-1" -c:a libvorbis -b:a 128k "#{video_output_filename_webm}"`
 end
 

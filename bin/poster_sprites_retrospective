@@ -1,0 +1,22 @@
+#!/usr/bin/env ruby
+
+# poster_sprites_retrospective /path/to/directory/of/videos
+
+require 'fileutils'
+
+directory = File.expand_path(ARGV[0])
+Dir.glob(File.join(directory, '*.mp4')).each do |video|
+  basename = File.basename(video, '.mp4')
+
+  video_snapshots_directory = File.join(directory, basename)
+  Dir.mkdir(video_snapshots_directory) unless File.exist?(video_snapshots_directory)
+  video_snapshot_base_filename = File.join(video_snapshots_directory, basename)
+
+	# Create images every 5 seconds from the MP4 output.
+  `ffmpeg -i "#{video}" -f image2 -vf fps=fps=1/5 #{video_snapshot_base_filename}-%05d.png`
+
+  poster_sprite_command_path = File.join(File.expand_path(File.dirname(__FILE__)), 'poster_sprite')
+  `#{poster_sprite_command_path} #{video_snapshots_directory}`
+
+  FileUtils.rm(Dir.glob(File.join(video_snapshots_directory, '*png')))
+end

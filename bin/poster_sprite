@@ -1,10 +1,20 @@
 #!/usr/bin/env ruby
 
-# poster_sprite /path/to/snapshots/name
+# poster_sprite /path/to/snapshots/directoryname
 
 # Creates a poster sprite (and in the future maybe a WebVTT file) from snapshots in a directory.
 
 # requires montage and identify from imagemagick
+
+module AccessDerivatives
+  def self.seconds_to_webvtt_timestamp(total_seconds)
+    seconds = total_seconds % 60
+    minutes = (total_seconds / 60) % 60
+    hours = total_seconds / (60 * 60)
+
+    format("%02d:%02d:%02d.000", hours, minutes, seconds)
+  end
+end
 
 directory = File.expand_path(ARGV[0])
 directory_glob = File.join(directory, '*png')
@@ -44,8 +54,8 @@ File.open(webvtt_output_filename, 'w') do |fh|
     start_time_integer = index * 5 # 5 seconds between each
     end_time_integer = start_time_integer + 5
 
-    start_time = start_time_integer.to_s + '.000'
-    end_time = end_time_integer.to_s + '.000'
+    start_time = AccessDerivatives.seconds_to_webvtt_timestamp(start_time_integer)
+    end_time = AccessDerivatives.seconds_to_webvtt_timestamp(end_time_integer)
 
     fh.puts start_time + ' --> ' + end_time
     fh.puts full_url + "\n\n"

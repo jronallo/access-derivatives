@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# upload_batch.sh /path/to/batch/directory
+# upload_video_batch.sh /path/to/batch/directory
 
 # Setting for directory to where the batch directory ought to be uploaded
 upload_batch_directory_base=/var/uploads/
@@ -15,6 +15,9 @@ basename=${argv0##*/}
 
 # Copy the files to the remote server under the upload batch directory.
 scp -r $1 $whoami@av1.lib.ncsu.edu:$upload_batch_directory_base
+
+echo "Hit ENTER when you wish to continue."
+read SOMETHIGNANYTHING
 
 # Trigger the processing job on the remove server and background it using nohup.
 # Output and errors will go into files. FFmpeg output goes to standard error.

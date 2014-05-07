@@ -35,7 +35,7 @@ height = (original_height.to_f / original_width * width).to_i
 
 tile_per_row = 5
 
-`montage #{directory_glob} -tile #{tile_per_row}x -geometry #{width}x #{sprite_output_filename}`
+`montage #{directory_glob} -tile #{tile_per_row}x -geometry #{width}x#{height}! #{sprite_output_filename}`
 
 vtt_asset_base = File.join('http://siskel.lib.ncsu.edu/SCRC/', directory_basename, sprite_basename)
 

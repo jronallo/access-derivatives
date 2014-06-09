@@ -15,6 +15,8 @@ basename=${argv0##*/}
 
 # Copy the files to the remote server under the upload batch directory.
 scp -r $1 $whoami@av1.lib.ncsu.edu:$upload_batch_directory_base
+chmod g+rx $upload_batch_directory_base/$basename
+chmod g+r $upload_batch_directory_base/$basename/*
 
 echo "Hit ENTER when you wish to continue."
 read SOMETHIGNANYTHING

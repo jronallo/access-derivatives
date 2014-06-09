@@ -22,7 +22,7 @@ echo -e 'Copying the files to av1... (May need to enter password).\n'
 scp -r $1 $whoami@av1.lib.ncsu.edu:$upload_batch_directory_base
 
 echo -e 'Changing group permissions of files. (May need to enter password).'
-ssh $whoami@av1.lib.ncsu.edu "chmod g+rx $full_upload_path && chmod g+r $full_upload_path_contents"
+ssh $whoami@av1.lib.ncsu.edu "chmod g+rx $full_upload_path && chmod g+rw $full_upload_path_contents"
 
 echo "Hit ENTER when you wish to continue with processing the video. (May need to enter password)."
 read SOMETHIGNANYTHING

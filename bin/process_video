@@ -32,7 +32,7 @@ Dir.mkdir(snapshot_directory) unless File.exist?(snapshot_directory)
 
 # Get the list of all the files that ought to be processed
 source_video_files = []
-['*.mp4','*.flv', '*.mov', '*.avi', '*.mkv','*.m4v'].each do |source_extension|
+['*.mp4','*.flv', '*.mov', '*.avi', '*.mkv','*.m4v', '*.f4v'].each do |source_extension|
   source_video_files << Dir.glob(File.join(directory, source_extension))
 end
 source_video_files.flatten!.compact!

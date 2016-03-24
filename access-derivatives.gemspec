@@ -19,7 +19,10 @@ Gem::Specification.new do |spec|
   spec.require_paths = ["lib"]
 
   spec.add_dependency "mail"
-  
+  spec.add_dependency "iiif_url"
+  spec.add_dependency "httpclient"
+  spec.add_dependency "oily_png"
+
   spec.add_development_dependency "bundler", "~> 1.5"
   spec.add_development_dependency "rake"
 end

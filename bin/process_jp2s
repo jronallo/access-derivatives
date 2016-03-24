@@ -1,0 +1,127 @@
+#!/usr/bin/env ruby
+
+require 'date'
+require 'fileutils'
+require 'mail'
+
+# Logging
+email_addresses = %w[bjdietz@ncsu.edu jnronall@ncsu.edu]
+current_date_for_log_path = DateTime.now.iso8601
+base_log_path = '/html5/tifs-logs'
+process_jp2s_error_log_path = File.join base_log_path, "process_jp2s_error-#{current_date_for_log_path}.log"
+process_jp2s_success_log_path = File.join base_log_path, "process_jp2s_success-#{current_date_for_log_path}.log"
+
+# set up some paths
+base_new_jp2_directory ="/access-images/jp2s/"
+tifs_glob = '/html5/tifs/**/*.tif'
+tif_paths = Dir.glob(tifs_glob)
+base_completed_directory = "/html5/tifs-completed"
+
+# Set up counters
+error_count = 0
+success_count = 0
+
+# exit if tif paths is empty
+if tif_paths.empty?
+  puts "No tifs"
+  exit
+else
+  # Open our log files and get started
+  error_log = File.open(process_jp2s_error_log_path, 'w')
+  success_log = File.open(process_jp2s_success_log_path, 'w')
+end
+
+tif_paths.each do |tif_path|
+  basename = File.basename(tif_path, '.tif')
+  two_characters = basename.slice(0, 2)
+
+  ## IIIF setup
+  iiif_jp2_directory = File.join(base_new_jp2_directory, two_characters)
+  iiif_jp2_filepath = File.join(iiif_jp2_directory, basename + '.jp2')
+
+  # TODO: If the JP2 exists do we just overwrite?
+
+  # create the IIIF directory if it doesn't already exist
+  if !File.exist?(iiif_jp2_directory)
+    # set permissions on the new jp2 directory for the iiif user to rwx
+    FileUtils.mkdir iiif_jp2_directory, mode: 0770
+  end
+
+  ## Djatoka setup
+  djatoka_jp2_filepath = File.join('/storage/temporary', basename + '.jp2')
+
+  # Create a RGBA tif for kakadu
+  tmp_tif = Tempfile.new([basename, '.tif'])
+  `tiff2rgba -c none #{tif_path} #{tmp_tif.path}`
+
+  # Create IIIF JP2 image
+  kdu_compress_iiif =
+    %Q|kdu_compress -rate 0.5 \
+     -precise \
+     Clevels=6 "Cblk={64,64}" \
+     -jp2_space sRGB \
+     Cuse_sop=yes Cuse_eph=yes Corder=RLCP ORGgen_plt=yes ORGtparts=R \
+     "Stiles={1024,1024}" \
+     -double_buffering 10 \
+     -num_threads 4 \
+     Creversible=no \
+     -no_weights \
+      -i #{tmp_tif.path} -o #{iiif_jp2_filepath}|
+
+  `#{kdu_compress_iiif}`
+
+  # Create the Djatoka JP2 image
+  kdu_compress_djatoka =
+    %Q| kdu_compress -rate 0.5 Clayers=1 Clevels=7 "Cprecincts={256,256},{256,256},{256,256},{128,128},{128,128},{64,64},{64,64},{32,32},{16,16}" "Corder=RPCL" "ORGgen_plt=yes" "ORGtparts=R" "Cblk={32,32}" Cuse_sop=yes -i #{tmp_tif.path} -o #{djatoka_jp2_filepath}
+    |
+
+  `#{kdu_compress_djatoka}`
+
+  # Do the JP2 files exist. If both exist it is a success!
+  if File.size?(iiif_jp2_filepath) && File.size?(djatoka_jp2_filepath)
+    # TODO: Do a check of the IIIF JP2 by requesting the image and make sure that
+    #       there is more than one color in the image. ChunkyPNG can help here.
+
+    # set the correct permissions on the JP2s files
+    # TODO: The iiif image ought to be readable and writable by the "iiif" group
+
+    # TODO: The djatoka image ought to be readable and writable by the "scrc" group
+
+    # move the tif to the success directory for later deletion
+    FileUtils.mv tif, File.join(base_completed_directory, 'success', "#{basename}.tif")
+
+    success_log.puts basename
+    success_count += 1
+  else # failure :(
+    # remove the created JP2s since they ought not to be published
+    File.unlink iiif_jp2_filepath
+    File.unlink djatoka_jp2_filepath
+    # Move the tif to the error directory to make it easier to fine
+    FileUtils.mv tif, File.join(base_completed_directory, 'error', "#{basename}.tif")
+    error_log.puts basename
+    error_count += 1
+  end
+
+  # Either way we ought to remove the temporary tif image
+  tmp_tif.close
+  tmp_tif.unlink
+end
+
+# close the log files
+error_log.close
+success_log.close
+
+# TODO: Email the log files out
+mail_body = "JP2 processing Job\nStart:#{current_date_for_log_path}\nCompleted:#{DateTime.now.iso8601}\n\nTotal tifs: #{tif_paths.length}\nErrors: #{error_count}\nSuccesses:#{success_count}"
+
+mail = Mail.new do
+  from     'jnronall@ncsu.edu'
+  to       email_addresses.join(', ')
+  subject  'JP2 processing job completed'
+  body     mail_body
+  add_file process_jp2s_error_log_path
+  add_file process_jp2s_success_log_path
+end
+
+# mail.delivery_method :sendmail
+mail.deliver!

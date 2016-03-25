@@ -8,6 +8,12 @@ require 'iiif_url'
 require 'httpclient'
 require 'chunky_png'
 
+# Unless we get a lock on the lockfile we exit immediately
+unless File.new('/tmp/process_jp2.lock', 'w').flock(File::LOCK_NB|File::LOCK_EX)
+  puts "Can't get lock so exiting! Nothing processed"
+  exit
+end
+
 # Logging
 email_addresses = %w[bjdietz@ncsu.edu jnronall@ncsu.edu]
 current_date_for_log_path = DateTime.now.iso8601
@@ -130,7 +136,7 @@ error_log.close
 success_log.close
 
 # TODO: Email the log files out
-mail_body = "JP2 processing Job\nStart:#{current_date_for_log_path}\nCompleted:#{DateTime.now.iso8601}\n\nTotal tifs: #{tif_paths.length}\nErrors: #{error_count}\nSuccesses:#{success_count}"
+mail_body = "JP2 processing Job\nStart:#{current_date_for_log_path}\nCompleted:#{DateTime.now.iso8601}\n\nTotal TIFs: #{tif_paths.length}\nErrors: #{error_count}\nSuccesses:#{success_count}"
 
 mail = Mail.new do
   from     'jnronall@ncsu.edu'
@@ -143,3 +149,18 @@ end
 
 # mail.delivery_method :sendmail
 mail.deliver!
+
+
+# TODO: Is a check of the TIF like this necessary still?
+# def check_file
+#   # It _should_fail if it has spaces, but should never get to this point having spaces.
+#   output = `identify "#{file_path}" 2>&1`
+#   if output.include?("identify: ") and
+#     !output.include?('wrong data type 7 for "RichTIFFIPTC"; tag ignored.') and
+#     !output.include?('incorrect count for field "MinSampleValue"') and
+#     !output.include?('incorrect count for field "MaxSampleValue"') and
+#     !output.include?('wrong data type 6 for "Photoshop"; tag ignored.') and
+#     !output.include?('unknown field with tag 37724')
+#     raise Kakadoer::MalformedImageError
+#   end
+# end

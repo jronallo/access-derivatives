@@ -26,8 +26,7 @@ base_new_jp2_directory ="/access-images/jp2s/"
 tifs_glob = '/html5/tifs/**/*.tif'
 tif_paths = Dir.glob(tifs_glob)
 base_completed_directory = "/html5/tifs-completed"
-iiif_base_url = 'http://iiif.lib.ncsu.edu'
-http_client = HTTPClient.new
+@http_client = HTTPClient.new
 
 # Set up counters
 error_count = 0
@@ -46,14 +45,14 @@ end
 # Get a small PNG image from the IIIF image server and test
 # that it has at least 3 colors.
 def iiif_png_parses?(basename)
-  png_params = {identifier: basename, base_url: iiif_base_url, size: '75,', format: 'png'}
+  png_params = {identifier: basename, base_url: 'http://iiif.lib.ncsu.edu/iiif/', size: '75,', format: 'png'}
   png_url = IiifUrl.from_params png_params
-  response = http_client.get png_url
+  response = @http_client.get png_url
   image = ChunkyPNG::Image.from_blob response.body
   # Are there more than 3 colors in this image. if not fail
   pixels = image.pixels
   colors = pixels.uniq
-  colors.length > 3
+  pixels.length == 5625 && colors.length > 3
 end
 
 
@@ -109,6 +108,10 @@ tif_paths.each do |tif_path|
     # TODO: Make iiif image readable and writable by the "iiif" group
 
     # TODO: Make djatoka image readable and writable by the "scrc" group
+
+    # TODO: Trigger clearing the IIIF JPG and info.json cache for this image in case it is being reprocessed.
+
+    # TODO: Hit the cache warming API endpoint for this image.
 
     # move the tif to the success directory for later deletion
     FileUtils.mv tif, File.join(base_completed_directory, 'success', "#{basename}.tif")

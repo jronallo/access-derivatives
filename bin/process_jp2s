@@ -1,5 +1,7 @@
 #!/usr/bin/env ruby
 
+# Script that can be run under cron for processing JP2 images from TIFs
+
 require 'date'
 require 'fileutils'
 require 'tempfile'
@@ -65,6 +67,7 @@ tif_paths.each do |tif_path|
   iiif_jp2_filepath = File.join(iiif_jp2_directory, basename + '.jp2')
 
   # TODO: If the JP2 exists do we just overwrite?
+  # TODO: If the JP2 exists maybe add to a re-process list?
 
   # create the IIIF directory if it doesn't already exist
   if !File.exist?(iiif_jp2_directory)

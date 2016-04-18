@@ -17,17 +17,17 @@ unless File.new('/tmp/process_jp2.lock', 'w').flock(File::LOCK_NB|File::LOCK_EX)
 end
 
 # Logging
-email_addresses = %w[bjdietz@ncsu.edu jnronall@ncsu.edu]
+email_addresses = %w[ jnronall@ncsu.edu ] # TODO: %w[bjdietz@ncsu.edu jnronall@ncsu.edu]
 current_date_for_log_path = DateTime.now.iso8601
-base_log_path = '/html5/tifs-logs'
+base_log_path = '/html/tifs-logs'
 process_jp2s_error_log_path = File.join base_log_path, "process_jp2s_error-#{current_date_for_log_path}.log"
 process_jp2s_success_log_path = File.join base_log_path, "process_jp2s_success-#{current_date_for_log_path}.log"
 
 # set up some paths
 base_new_jp2_directory ="/access-images/jp2s/"
-tifs_glob = '/html5/tifs/**/*.tif'
+tifs_glob = '/html/tifs/**/*.tif'
 tif_paths = Dir.glob(tifs_glob)
-base_completed_directory = "/html5/tifs-completed"
+base_completed_directory = "/html/tifs-completed"
 @http_client = HTTPClient.new
 
 # Set up counters
@@ -106,7 +106,7 @@ tif_paths.each do |tif_path|
   `#{kdu_compress_djatoka}`
 
   # Do the JP2 files exist. If both exist it is a success!
-  if File.size?(iiif_jp2_filepath) && File.size?(djatoka_jp2_filepath) && iiif_png_parses?(basename)
+  if File.size?(iiif_jp2_filepath) && File.size?(djatoka_jp2_filepath) # TODO: && iiif_png_parses?(basename)
     # set the correct permissions on the JP2s files
     # TODO: Make iiif image readable and writable by the "iiif" group
 

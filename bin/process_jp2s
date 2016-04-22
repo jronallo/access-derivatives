@@ -60,7 +60,7 @@ end
 # By warming the cache we'll also be clearing out all associated JPGs derived
 # from the previous JP2.
 def clear_iiif_cache_for_image(basename)
-  url = "http://iiif.lib.ncsu.edu/iiif/#{basename}"
+  url = "http://iiif.lib.ncsu.edu/iiif/warm/#{basename}"
   response = @http_client.get url
   puts response
 end

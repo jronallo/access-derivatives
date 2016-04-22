@@ -62,7 +62,7 @@ end
 def clear_iiif_cache_for_image(basename)
   url = "http://iiif.lib.ncsu.edu/iiif/warm/#{basename}"
   response = @http_client.get url
-  puts response
+  puts response.body
 end
 
 

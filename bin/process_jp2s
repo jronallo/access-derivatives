@@ -67,7 +67,7 @@ def iiif_png_parses?(basename)
   # Are there more than 3 colors in this image. if not fail
   pixels = image.pixels
   colors = pixels.uniq
-  pixels.length == 5625 && colors.length > 3
+  pixels.length > 375 && colors.length > 3
 end
 
 tif_paths.each do |tif_path|

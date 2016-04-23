@@ -44,6 +44,15 @@ else
   success_log = File.open(process_jp2s_success_log_path, 'w')
 end
 
+# By warming the cache we'll also be clearing out all associated JPGs derived
+# from the previous JP2.
+def clear_iiif_cache_for_image(basename)
+  url = "http://iiif.lib.ncsu.edu/iiif/warm/#{basename}"
+  puts url
+  response = @http_client.get url
+  puts response.body
+end
+
 # Get a small PNG image from the IIIF image server and test
 # that it has at least 3 colors.
 def iiif_png_parses?(basename)
@@ -60,15 +69,6 @@ def iiif_png_parses?(basename)
   colors = pixels.uniq
   pixels.length == 5625 && colors.length > 3
 end
-
-# By warming the cache we'll also be clearing out all associated JPGs derived
-# from the previous JP2.
-def clear_iiif_cache_for_image(basename)
-  url = "http://iiif.lib.ncsu.edu/iiif/warm/#{basename}"
-  response = @http_client.get url
-  puts response.body
-end
-
 
 tif_paths.each do |tif_path|
   basename = File.basename(tif_path, '.tif')

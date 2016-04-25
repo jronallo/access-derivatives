@@ -10,8 +10,16 @@ require 'iiif_url'
 require 'httpclient'
 require 'chunky_png'
 
-# Unless we get a lock on the lockfile we exit immediately
-flock_file = File.open('/tmp/process_jp2.lock', 'w')
+lock_file_name = '/tmp/process_jp2.lock'
+
+# If the lock file does not exist we create it.
+unless File.exist?(lock_file_name)
+  FileUtils.touch(lock_file_name)
+end
+
+# Unless we get a lock on the lockfile we exit immediately.
+# We keep a file handle open so that we retain the lock the whole time.
+flock_file = File.open(lock_file_name, 'w')
 unless flock_file.flock(File::LOCK_NB|File::LOCK_EX)
   puts "Can't get lock so exiting! Nothing processed"
   exit

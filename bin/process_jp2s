@@ -17,7 +17,7 @@ unless File.new('/tmp/process_jp2.lock', 'w').flock(File::LOCK_NB|File::LOCK_EX)
 end
 
 # Logging
-email_addresses = %w[ jnronall@ncsu.edu ]
+email_addresses = %w[ jnronall@ncsu.edu bjdietz@ncsu.edu ]
 current_date_for_log_path = DateTime.now.iso8601
 base_log_path = '/html/tifs-logs'
 process_jp2s_error_log_path = File.join base_log_path, "process_jp2s_error-#{current_date_for_log_path}.log"

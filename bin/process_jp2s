@@ -57,7 +57,7 @@ end
 # that it has at least 3 colors.
 def iiif_png_parses?(basename)
   # First clear the cache so that we are getting a derivative from the latest JP2.
-  # TODO: Trigger clearing the IIIF JPG and info.json cache for this image in case it is being reprocessed.
+  # Trigger clearing the IIIF JPG and info.json cache for this image in case it is being reprocessed.
   clear_iiif_cache_for_image(basename)
 
   png_params = {identifier: basename, base_url: 'http://iiif.lib.ncsu.edu/iiif/', size: '75,', format: 'png'}
@@ -119,13 +119,6 @@ tif_paths.each do |tif_path|
 
   # Do the JP2 files exist. If both exist it is a success!
   if File.size?(iiif_jp2_filepath) && File.size?(djatoka_jp2_filepath) && iiif_png_parses?(basename)
-    # set the correct permissions on the JP2s files
-    # TODO: Make iiif image readable and writable by the "iiif" group
-
-    # TODO: Make djatoka image readable and writable by the "scrc" group
-
-    # TODO: Hit the cache warming API endpoint for this image.
-
     # move the tif to the success directory for later deletion
     FileUtils.mv tif_path, File.join(base_completed_directory, 'success', "#{basename}.tif")
 
@@ -151,7 +144,7 @@ end
 error_log.close
 success_log.close
 
-# TODO: Email the log files out
+# Email the log files out
 mail_body = "JP2 processing Job\nStart:#{current_date_for_log_path}\nCompleted:#{DateTime.now.iso8601}\n\nTotal TIFs: #{tif_paths.length}\nErrors: #{error_count}\nSuccesses:#{success_count}"
 
 mail = Mail.new do

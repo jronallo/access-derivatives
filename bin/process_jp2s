@@ -11,7 +11,8 @@ require 'httpclient'
 require 'chunky_png'
 
 # Unless we get a lock on the lockfile we exit immediately
-unless File.new('/tmp/process_jp2.lock', 'w').flock(File::LOCK_NB|File::LOCK_EX)
+flock_file = File.open('/tmp/process_jp2.lock', 'w')
+unless flock_file.flock(File::LOCK_NB|File::LOCK_EX)
   puts "Can't get lock so exiting! Nothing processed"
   exit
 end
@@ -169,6 +170,7 @@ end
 # mail.delivery_method :sendmail
 mail.deliver!
 
+flock_file.flock(File::LOCK_UN)
 
 # TODO: Is a check of the TIF like this necessary still?
 # def check_file

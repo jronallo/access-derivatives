@@ -44,6 +44,14 @@ else
   success_log = File.open(process_jp2s_success_log_path, 'w')
 end
 
+def create_error_log_line(basename, iiif_jp2_filepath, djatoka_jp2_filepath)
+  errors = []
+  errors << 'iiif-no-size' if !File.size?(iiif_jp2_filepath)
+  errors << 'djatoka-no-size' if !File.size?(djatoka_jp2_filepath)
+  errors << 'iiif-png-no-parse' if !iiif_png_parses?(basename)
+  errors.join('  ')
+end
+
 # By warming the cache we'll also be clearing out all associated JPGs derived
 # from the previous JP2.
 def clear_iiif_cache_for_image(basename)
@@ -70,7 +78,7 @@ def iiif_png_parses?(basename)
   pixels.length > 375 && colors.length > 3
 end
 
-tif_paths.each do |tif_path|
+tif_paths.sort.each do |tif_path|
   basename = File.basename(tif_path, '.tif')
   two_characters = basename.slice(0, 2)
 
@@ -126,13 +134,15 @@ tif_paths.each do |tif_path|
     success_count += 1
 
   else # failure :(
+    error_to_log = create_error_log_line(basename, iiif_jp2_filepath, djatoka_jp2_filepath)
+    error_log.puts "#{basename} #{error_to_log}"
+    error_count += 1
+    # Clean up
     # remove the created JP2s since they ought not to be published
     File.unlink iiif_jp2_filepath
     File.unlink djatoka_jp2_filepath
     # Move the tif to the error directory to make it easier to fine
     FileUtils.mv tif_path, File.join(base_completed_directory, 'error', "#{basename}.tif")
-    error_log.puts basename
-    error_count += 1
   end
 
   # Either way we ought to remove the temporary tif image

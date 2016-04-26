@@ -155,7 +155,7 @@ tif_paths.sort.each do |tif_path|
     # remove the created JP2s since they ought not to be published
     File.unlink iiif_jp2_filepath
     File.unlink djatoka_jp2_filepath
-    # Move the tif to the error directory to make it easier to fine
+    # Move the tif to the error directory to make it easier to find for troubleshooting.
     FileUtils.mv tif_path, File.join(base_completed_directory, 'error', "#{basename}.tif")
   end
 

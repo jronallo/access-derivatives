@@ -134,10 +134,15 @@ tif_paths.sort.each do |tif_path|
 
   `#{kdu_compress_djatoka}`
 
-  # Do the JP2 files exist. If both exist it is a success!
+  # Do the JP2 files exist. If both exist and the IIIF PNG parses it is a
+  # success!
   if File.size?(iiif_jp2_filepath) && File.size?(djatoka_jp2_filepath) && iiif_png_parses?(basename)
     # move the tif to the success directory for later deletion
-    FileUtils.mv tif_path, File.join(base_completed_directory, 'success', "#{basename}.tif")
+    # FileUtils.mv tif_path, File.join(base_completed_directory, 'success', "#{basename}.tif")
+
+    # WARNING: The successful TIF will now be removed. This might not be what we
+    # want in the future.
+    FileUtils.rm tif_path
 
     success_log.puts basename
     success_count += 1

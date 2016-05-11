@@ -64,7 +64,7 @@ end
 # By warming the cache we'll also be clearing out all associated JPGs derived
 # from the previous JP2.
 def clear_iiif_cache_for_image(basename)
-  url = "http://iiif.lib.ncsu.edu/iiif/warm/#{basename}"
+  url = "https://iiif.lib.ncsu.edu/iiif/warm/#{basename}"
   puts url
   response = @http_client.get url
   puts response.body
@@ -77,7 +77,7 @@ def iiif_png_parses?(basename)
   # Trigger clearing the IIIF JPG and info.json cache for this image in case it is being reprocessed.
   clear_iiif_cache_for_image(basename)
 
-  png_params = {identifier: basename, base_url: 'http://iiif.lib.ncsu.edu/iiif/', size: '75,', format: 'png'}
+  png_params = {identifier: basename, base_url: 'https://iiif.lib.ncsu.edu/iiif/', size: '75,', format: 'png'}
   png_url = IiifUrl.from_params png_params
   response = @http_client.get png_url
   image = ChunkyPNG::Image.from_blob response.body

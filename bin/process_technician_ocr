@@ -51,7 +51,7 @@ end
 
 def create_word_boundary_json(identifier)
   json_filename = File.join directory_for_identifier(identifier), identifier + '.json'
-  
+
 end
 
 # Given a doc iterate over each of the jp2s and process OCR for them
@@ -81,6 +81,10 @@ def process_ocr_for_each_page(doc)
     # create outputs (txt, hOCR, PDF) with tesseract.
     # Look under /usr/share/tesseract/tessdata/configs/ to see hocr and pdf values.
     `tesseract #{tmp_png.path} #{identifier} -l eng hocr pdf`
+
+    # Set permissions
+    FileUtils.chmod_R('ug=rwX,o=rX', tesseract_output_directory)
+
     # remove the temporary file
     tmp_png.close
     tmp_png.unlink

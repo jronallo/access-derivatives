@@ -122,6 +122,7 @@ total_pages.times do |page|
     # A doc is a resource and can have multiple pages
     process_ocr_for_each_page(doc)
     concatenate_ocr_for_resource(doc)
+    #TODO: allow this to run over all Technicians
     exit
   end
 end

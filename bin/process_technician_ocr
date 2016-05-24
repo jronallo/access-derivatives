@@ -9,9 +9,10 @@ require 'tempfile'
 require 'iiif_url'
 require 'httpclient'
 require 'json'
+require 'nokogiri'
 
 lock_file_name = '/tmp/process_technician_ocr.lock'
-IiifUrl.set_base_url("https://iiif-prod01.lib.ncsu.edu/iiif")
+IiifUrl.set_base_url("https://iiif.lib.ncsu.edu/iiif")
 
 # If the lock file does not exist we create it.
 unless File.exist?(lock_file_name)
@@ -40,12 +41,27 @@ end
 
 # Based on a identifier determine if all the OCR files already exist
 def ocr_already_exists?(identifier)
-  base_filename = File.join directory_for_identifier(identifier), identifier
-  File.size?(base_filename + '.txt') && File.size?(base_filename + '.hocr') && File.size?(base_filename + '.pdf')
+  File.size?(txt_filepath(identifier)) && File.size?(hocr_filepath(identifier)) && File.size?(pdf_filepath(identifier))
 end
 
-def directory_for_identifier(identifier)
-  File.join directory_for_first_two(identifier), identifier
+def output_base_filepath(identifier)
+  File.join directory_for_identifier(identifier), identifier
+end
+
+def txt_filepath(identifier)
+  output_base_filepath(identifier) + '.txt'
+end
+
+def hocr_filepath(identifier)
+  output_base_filepath(identifier) + '.hocr'
+end
+
+def pdf_filepath(identifier)
+  output_base_filepath(identifier) + '.pdf'
+end
+
+def json_file_filepath(identifier)
+  output_base_filepath(identifier) + '.json'
 end
 
 def directory_for_first_two(identifier)
@@ -53,9 +69,39 @@ def directory_for_first_two(identifier)
   File.join @ocr_directory, first_two_of_identifier
 end
 
-def create_word_boundary_json(identifier)
-  json_filename = File.join directory_for_identifier(identifier), identifier + '.json'
+def directory_for_identifier(identifier)
+  File.join directory_for_first_two(identifier), identifier
+end
 
+def parse_hocr_title(title)
+  parts = title.split(';').map(&:strip)
+  info = {}
+  parts.each do |part|
+    sections = part.split(' ')
+    sections.shift
+    if /^bbox/.match(part)
+      info['x0'], info['y0'], info['x1'], info['y1'] = sections
+    elsif /^x_wconf/.match(part)
+      info['c'] = sections.first
+    end
+  end
+  info
+end
+
+def create_word_boundary_json(identifier)
+  # json_file_filepath(identifier)
+  doc = File.open(hocr_filepath(identifier)) { |f| Nokogiri::HTML(f) }
+  json = {}
+  doc.css('span.ocrx_word').each do |span|
+    word = span.text
+    json[word] ||= []
+    title = span['title']
+    info = parse_hocr_title(title)
+    json[word] << info
+  end
+  File.open(json_file_filepath(identifier), 'w') do |fh|
+    fh.puts json.to_json
+  end
 end
 
 # Given a doc iterate over each of the jp2s and process OCR for them
@@ -86,26 +132,31 @@ def process_ocr_for_each_page(doc)
     # Look under /usr/share/tesseract/tessdata/configs/ to see hocr and pdf values.
     `tesseract #{tmp_png.path} #{identifier} -l eng hocr pdf`
 
-    # Set permissions
-    FileUtils.chmod_R('ug=rwX,o=rX', directory_for_first_two(identifier))
+    # Do a check that the files were properly created
+    if ocr_already_exists?(identifier)
+      # extract words and boundaries from hOCR into a JSON file
+      create_word_boundary_json(identifier)
+      # Set permissions
+      FileUtils.chmod_R('ug=rwX,o=rX', directory_for_first_two(identifier))
+    else
+      # remove them if they don't exist
+      FileUtils.rm_rf directory_for_identifier(identifier)
+    end
 
     # remove the temporary file
     tmp_png.close
     tmp_png.unlink
-
-    # TODO: Do a check that the files were properly created and if not remove them
-    # if !ocr_already_exists?(identifier)
-
-    # TODO: extract words and boundaries from hOCR into a JSON file
-    hocr_filepath = File.join tesseract_output_directory, identifier + '.hocr'
-    create_word_boundary_json(identifier)
-
   end
+end
+
+def concatenate_txt(doc)
+  #code
 end
 
 # Given a doc
 def concatenate_ocr_for_resource(doc)
   # TODO: concatenate txt
+  concatenate_txt(doc)
   # TODO: concatenate PDFs
   # TODO: concatenate hOCR
 end
@@ -127,21 +178,5 @@ total_pages.times do |page|
   end
 end
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# unlock the file
 flock_file.flock(File::LOCK_UN)

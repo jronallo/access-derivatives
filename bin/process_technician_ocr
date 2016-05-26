@@ -10,6 +10,8 @@ require 'iiif_url'
 require 'httpclient'
 require 'json'
 require 'nokogiri'
+require 'tmpdir'
+require 'pry'
 
 lock_file_name = '/tmp/process_technician_ocr.lock'
 IiifUrl.set_base_url("https://iiif.lib.ncsu.edu/iiif")
@@ -30,6 +32,12 @@ end
 # set up some paths
 @ocr_directory = "/access-images/ocr/"
 @http_client = HTTPClient.new
+@temp_directory = File.join Dir.tmpdir, 'process_ocr'
+unless File.exist? @temp_directory
+  FileUtils.mkdir @temp_directory
+end
+# chanage to directory to put tesseract outputs
+Dir.chdir @temp_directory
 
 # Make the request to Sal for the results for the page
 def get_technician_results_for_page(page: 1)
@@ -41,36 +49,37 @@ end
 
 # Based on a identifier determine if all the OCR files already exist
 def ocr_already_exists?(identifier)
-  File.size?(txt_filepath(identifier)) && File.size?(hocr_filepath(identifier)) && File.size?(pdf_filepath(identifier))
+  File.size?(final_txt_filepath(identifier)) && File.size?(final_hocr_filepath(identifier)) && File.size?(final_pdf_filepath(identifier))
 end
 
-def output_base_filepath(identifier)
-  File.join directory_for_identifier(identifier), identifier
-end
-
-def txt_filepath(identifier)
-  output_base_filepath(identifier) + '.txt'
-end
-
-def hocr_filepath(identifier)
-  output_base_filepath(identifier) + '.hocr'
-end
-
-def pdf_filepath(identifier)
-  output_base_filepath(identifier) + '.pdf'
-end
-
-def json_file_filepath(identifier)
-  output_base_filepath(identifier) + '.json'
-end
-
+# Final file paths where files will be stored. This is not the same as the
+# location for the temporary processing.
 def directory_for_first_two(identifier)
   first_two_of_identifier = identifier.slice(0, 2)
   File.join @ocr_directory, first_two_of_identifier
 end
-
 def directory_for_identifier(identifier)
   File.join directory_for_first_two(identifier), identifier
+end
+def final_output_base_filepath(identifier)
+  File.join directory_for_identifier(identifier), identifier
+end
+def final_txt_filepath(identifier)
+  final_output_base_filepath(identifier) + '.txt'
+end
+def final_hocr_filepath(identifier)
+  final_output_base_filepath(identifier) + '.hocr'
+end
+def final_pdf_filepath(identifier)
+  final_output_base_filepath(identifier) + '.pdf'
+end
+def final_json_file_filepath(identifier)
+  final_output_base_filepath(identifier) + '.json'
+end
+
+# Temporary filepaths
+def temporary_filepath(identifier, extension)
+  File.join @temp_directory, identifier + extension
 end
 
 def parse_hocr_title(title)
@@ -89,8 +98,8 @@ def parse_hocr_title(title)
 end
 
 def create_word_boundary_json(identifier)
-  # json_file_filepath(identifier)
-  doc = File.open(hocr_filepath(identifier)) { |f| Nokogiri::HTML(f) }
+  # final_json_file_filepath(identifier)
+  doc = File.open(final_hocr_filepath(identifier)) { |f| Nokogiri::HTML(f) }
   json = {}
   doc.css('span.ocrx_word').each do |span|
     word = span.text
@@ -99,7 +108,7 @@ def create_word_boundary_json(identifier)
     info = parse_hocr_title(title)
     json[word] << info
   end
-  File.open(json_file_filepath(identifier), 'w') do |fh|
+  File.open(final_json_file_filepath(identifier), 'w') do |fh|
     fh.puts json.to_json
   end
 end
@@ -116,21 +125,41 @@ def process_ocr_for_each_page(doc)
     end
 
     # create tempfile for image
-    tmp_png = Tempfile.new([identifier, '.png'])
+    request_file_format = 'jpg'
+    tmp_download_image = Tempfile.new([identifier, ".#{request_file_format}"])
     # IIIF URL
-    url = IiifUrl.from_params identifier: identifier, format: 'png'
+    url = IiifUrl.from_params identifier: identifier, format: request_file_format
     # get image with httpclient
     response = @http_client.get url
     # write image to tempfile
-    tmp_png.puts response.body
-    # create directory to put tesseract outputs
-    tesseract_output_directory = directory_for_identifier(identifier)
-    FileUtils.mkdir_p tesseract_output_directory
-    # chanage to directory to put tesseract outputs
-    Dir.chdir tesseract_output_directory
+    tmp_download_image.puts response.body
+
     # create outputs (txt, hOCR, PDF) with tesseract.
     # Look under /usr/share/tesseract/tessdata/configs/ to see hocr and pdf values.
-    `tesseract #{tmp_png.path} #{identifier} -l eng hocr pdf`
+    # Do not create the PDF here. Instead just take the hOCR output and
+    # use a lower resolution (more compressed) version of the JPG image of the same
+    # dimensions to combine the hOCR with the JPG into a PDF of reasonable size.
+    `tesseract #{tmp_download_image.path} #{identifier} -l eng hocr`
+
+    # create directory to put final outputs
+    tesseract_output_directory = directory_for_identifier(identifier)
+    FileUtils.mkdir_p tesseract_output_directory
+
+    # move the txt from tesseract to final location
+    FileUtils.mv temporary_filepath(identifier, '.txt'), final_txt_filepath(identifier)
+
+    # Create a downsampled smaller version of the JPG
+    `convert -density 150 -quality 20 #{tmp_download_image.path} #{temporary_filepath(identifier, '.jpg')}`
+
+    # create the PDF with hocr-pdf
+    `hocr-pdf #{@temp_directory} > #{temporary_filepath(identifier, '.pdf')}`
+
+    # move the hOCR to the final location
+    FileUtils.mv temporary_filepath(identifier, '.hocr'), final_hocr_filepath(identifier)
+    # move the PDF to final location
+    FileUtils.mv temporary_filepath(identifier, '.pdf'), final_pdf_filepath(identifier)
+    # remove the downsampled JPG
+    FileUtils.rm temporary_filepath(identifier, '.jpg')
 
     # Do a check that the files were properly created
     if ocr_already_exists?(identifier)
@@ -144,20 +173,29 @@ def process_ocr_for_each_page(doc)
     end
 
     # remove the temporary file
-    tmp_png.close
-    tmp_png.unlink
+    tmp_download_image.unlink
   end
-end
-
-def concatenate_txt(doc)
-  #code
 end
 
 # Given a doc
 def concatenate_ocr_for_resource(doc)
+  resource_id = doc['id']
+  # Create directory for files at resource level
+  FileUtils.mkdir directory_for_identifier(resource_id)
+
+  # Use pdunite to join all the PDFs into one
+  pdfunite = "pdfunite"
+  doc['jp2_filenames_sms'].each do |identifier|
+    # If the file exists then add it to the pdfunite command
+    if File.exist? final_pdf_filepath(identifier)
+      pdfunite << ' ' + final_pdf_filepath(identifier) + ' '
+    end
+  end
+  # Add onto the end the path to the final resource PDF
+  pdfunite << " #{final_pdf_filepath(resource_id)} "
+  `#{pdfunite}`
+
   # TODO: concatenate txt
-  concatenate_txt(doc)
-  # TODO: concatenate PDFs
   # TODO: concatenate hOCR
 end
 

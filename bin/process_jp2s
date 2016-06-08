@@ -11,8 +11,7 @@ require 'httpclient'
 require 'chunky_png'
 
 lock_file_name = '/tmp/process_jp2.lock'
-# TODO: FIXME: when this is just https://iiif.lib.ncsu.edu/iiif
-@base_iiif_url = "https://iiif-prod01.lib.ncsu.edu/iiif"
+@base_iiif_url = "https://iiif.lib.ncsu.edu/iiif"
 
 # If the lock file does not exist we create it.
 unless File.exist?(lock_file_name)

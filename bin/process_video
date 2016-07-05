@@ -84,4 +84,4 @@ source_video_files.each do |filepath|
 end
 
 # Sends an email when the job is done. This may only work this way with the -r option on redhat.
-`echo "To get the files run: scp -r #{username_for_batch}@av1.lib.ncsu.edu:#{output_directory} ." | mail -s "Your transcoding job is done" -r jnronall@ncsu.edu  #{username_for_batch}@ncsu.edu`
+`echo "To get the files run: scp -r #{username_for_batch}@av-prod01.lib.ncsu.edu:#{output_directory} ." | mail -s "Your transcoding job is done" -r jnronall@ncsu.edu  #{username_for_batch}@ncsu.edu`

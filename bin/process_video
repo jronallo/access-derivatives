@@ -15,7 +15,7 @@ uid = File.stat(directory).uid
 username_for_batch = Etc.getpwuid(uid).name
 
 # What directory should we place the output in?
-base_output_directory = ENV['PROCESS_VIDEO_OUTPUT_DIRECTORY'] || '/html5/video/output'
+base_output_directory = ENV['PROCESS_VIDEO_OUTPUT_DIRECTORY'] || '/html/video/output'
 batch_output_directory = File.basename(directory)
 
 # Create output directory.

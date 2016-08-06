@@ -46,6 +46,7 @@ end
 
 # Make the request to Sal for the results for the page
 def get_technician_results_for_page(page: 1)
+  # FIXME: &q=technician-v9n22-1929-03-09
   url = "http://d.lib.ncsu.edu/collections/catalog.json?f[ispartof_facet][]=Technician&per_page=10&page=#{page}"
   response = @http_client.get url
   json = response.body
@@ -54,7 +55,8 @@ end
 
 # Based on a identifier determine if all the OCR files already exist
 def ocr_already_exists?(identifier)
-  File.size?(final_txt_filepath(identifier)) && File.size?(final_hocr_filepath(identifier)) && File.size?(final_pdf_filepath(identifier))
+  File.size?(final_txt_filepath(identifier)) && File.size?(final_hocr_filepath(identifier))
+  # FIXME: && File.size?(final_pdf_filepath(identifier))
 end
 
 # Final file paths where files will be stored. This is not the same as the
@@ -157,12 +159,20 @@ def process_ocr_for_each_page(doc)
     `convert -density 150 -quality 20 #{tmp_download_image.path} #{temporary_filepath(identifier, '.jpg')}`
 
     # create the PDF with hocr-pdf
-    `hocr-pdf #{@temp_directory} > #{temporary_filepath(identifier, '.pdf')}`
+    # FIXME: sometimes hocr-pdf fails so no PDF gets created.
+    begin
+      `hocr-pdf #{@temp_directory} > #{temporary_filepath(identifier, '.pdf')}`
+    rescue
+    end
 
     # move the hOCR to the final location
     FileUtils.mv temporary_filepath(identifier, '.hocr'), final_hocr_filepath(identifier)
-    # move the PDF to final location
-    FileUtils.mv temporary_filepath(identifier, '.pdf'), final_pdf_filepath(identifier)
+
+    # move the PDF to final location if it exists
+    if File.exist?(temporary_filepath(identifier, '.pdf')) && File.size?(temporary_filepath(identifier, '.pdf'))
+      FileUtils.mv temporary_filepath(identifier, '.pdf'), final_pdf_filepath(identifier)
+    end
+
     # remove the downsampled JPG
     FileUtils.rm temporary_filepath(identifier, '.jpg')
 
@@ -182,26 +192,50 @@ def process_ocr_for_each_page(doc)
   end
 end
 
-# Given a doc
-def concatenate_ocr_for_resource(doc)
-  resource_id = doc['id']
-  # Create directory for files at resource level
-  FileUtils.mkdir directory_for_identifier(resource_id)
-
+def concatenate_pdf(doc)
   # Use pdunite to join all the PDFs into one
   pdfunite = "pdfunite"
+  pdf_pages = []
   doc['jp2_filenames_sms'].each do |identifier|
     # If the file exists then add it to the pdfunite command
     if File.exist? final_pdf_filepath(identifier)
-      pdfunite << ' ' + final_pdf_filepath(identifier) + ' '
+      pdf_pages << final_pdf_filepath(identifier) + ' '
     end
   end
   # Add onto the end the path to the final resource PDF
-  pdfunite << " #{final_pdf_filepath(resource_id)} "
-  `#{pdfunite}`
+  pdfunite << " #{pdf_pages.join(' ')} #{final_pdf_filepath(doc['id'])} "
+  # Only try to create the combined PDF if all the pages have a PDF
+  if pdf_pages.length == doc['jp2_filenames_sms'].length
+    `#{pdfunite}`
+  else
+    puts "Some pages do not have a PDF. Skipping creation of combined PDF."
+  end
+end
 
-  # TODO: concatenate txt
-  # TODO: concatenate hOCR
+def concatenate_txt(doc)
+  text = ""
+  doc['jp2_filenames_sms'].each do |identifier|
+    text << File.read(final_txt_filepath(identifier))
+  end
+  File.open final_txt_filepath(doc['filename']), 'w' do |fh|
+    fh.puts text
+  end
+end
+
+# Given a doc create concatenated resources from them
+def concatenate_ocr_for_resource(doc)
+  # Create directory for files at resource level
+  unless File.exist? directory_for_identifier(doc["filename"])
+    FileUtils.mkdir directory_for_identifier(doc["filename"])
+  end
+
+  #concatenate pdf
+  concatenate_pdf(doc)
+
+  # concatenate txt
+  concatenate_txt(doc)
+
+  # TODO: concatenate hOCR?
 end
 
 # get the first page of results to find total_pages

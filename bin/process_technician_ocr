@@ -4,6 +4,9 @@
 # creates OCR for each page and then combined resources for
 # each resource.
 
+puts "This is an old version of this script. The latest version will be included as part of the iiif_search_inside Rails application. If you really want to use this version, then you will want to comment out the next line."
+exit
+
 require 'fileutils'
 require 'tempfile'
 require 'iiif_url'
@@ -47,7 +50,8 @@ end
 # Make the request to Sal for the results for the page
 def get_technician_results_for_page(page: 1)
   # FIXME: &q=technician-v9n22-1929-03-09
-  url_extra = "&q=april+1&f[resource_decade_facet][]=1980s"
+  url_extra = ''
+  # url_extra = "&q=april+1&f[resource_decade_facet][]=1980s"
   url = "http://d.lib.ncsu.edu/collections/catalog.json?f[ispartof_facet][]=Technician&per_page=10&page=#{page}#{url_extra}"
   response = @http_client.get url
   json = response.body
@@ -253,7 +257,8 @@ total_pages = response['response']['pages']['total_pages']
 
 # Yes, there's a duplicate request for the first page here, but this is a bit
 # simpler.
-total_pages.times do |page|
+total_pages
+5.times do |page|
   response = get_technician_results_for_page(page: page)
   response['response']['docs'].each do |doc|
     # A doc is a resource and can have multiple pages

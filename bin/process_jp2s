@@ -9,6 +9,10 @@ require 'mail'
 require 'iiif_url'
 require 'httpclient'
 require 'chunky_png'
+require 'yaml'
+
+file = File.read('~/process_jp2s_config.yml')
+PROCESS_JP2S_CONFIG = YAML.parse file
 
 lock_file_name = '/tmp/process_jp2.lock'
 @base_iiif_url = "https://iiif.lib.ncsu.edu/iiif"
@@ -88,6 +92,15 @@ def iiif_png_parses?(basename)
   pixels.length > 375 && colors.length > 3
 end
 
+def notify_scams(basename)
+  token = PROCESS_JP2S_CONFIG['token']
+  url = PROCESS_JP2S_CONFIG['url']
+  headers = { 'Content-Type' => 'application/json',
+      'Authorization' => "Token token=#{token}, user=jp2_processing" }
+  notification_data = {image: basename}
+  http.post url, notification_data.to_json, headers
+end
+
 tif_paths.sort.each do |tif_path|
   basename = File.basename(tif_path, '.tif')
   two_characters = basename.slice(0, 2)
@@ -128,12 +141,11 @@ tif_paths.sort.each do |tif_path|
   # Do the JP2 files exist. If both exist and the IIIF PNG parses it is a
   # success!
   if File.size?(iiif_jp2_filepath) && iiif_png_parses?(basename)
-    # move the tif to the success directory for later deletion
-    # FileUtils.mv tif_path, File.join(base_completed_directory, 'success', "#{basename}.tif")
-
     # WARNING: The successful TIF will now be removed. This might not be what we
     # want in the future.
     FileUtils.rm tif_path
+
+    notify_scams(basename)
 
     success_log.puts basename
     success_count += 1

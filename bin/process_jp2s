@@ -10,9 +10,10 @@ require 'iiif_url'
 require 'httpclient'
 require 'chunky_png'
 require 'yaml'
+require 'json'
 
-file = File.read('~/process_jp2s_config.yml')
-PROCESS_JP2S_CONFIG = YAML.parse file
+file = File.read(File.expand_path('~/process_jp2s_config.yml'))
+PROCESS_JP2S_CONFIG = YAML.load file
 
 lock_file_name = '/tmp/process_jp2.lock'
 @base_iiif_url = "https://iiif.lib.ncsu.edu/iiif"
@@ -98,7 +99,7 @@ def notify_scams(basename)
   headers = { 'Content-Type' => 'application/json',
       'Authorization' => "Token token=#{token}, user=jp2_processing" }
   notification_data = {image: basename}
-  http.post url, notification_data.to_json, headers
+  @http_client.post url, notification_data.to_json, headers
 end
 
 tif_paths.sort.each do |tif_path|

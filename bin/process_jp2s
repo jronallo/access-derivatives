@@ -70,10 +70,7 @@ end
 # from the previous JP2.
 def clear_iiif_cache_for_image(basename)
   # TODO: Not yet implemented with new image server eyebright
-  # url = File.join @base_iiif_url, "/warm/#{basename}"
-  # puts url
-  # response = @http_client.get url
-  # puts response.body
+  FileUtils.rm_rf "/access-images/cache/iiif/#{basename}"
 end
 
 # Get a small PNG image from the IIIF image server and test
